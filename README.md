@@ -1,16 +1,50 @@
-# assessment
+# Technical Assessment
 
 A new Flutter project.
 
-## Getting Started
+## Packages used
+sqflite - https://pub.dev/packages/sqflite
+Database for the application.
 
-This project is a starting point for a Flutter application.
+path - https://pub.dev/packages/path
+Path utility for database usage.
 
-A few resources to get you started if this is your first Flutter project:
+share_plus - https://pub.dev/packages/share_plus
+Share action button to share contact information.
 
-- [Lab: Write your first Flutter app](https://flutter.dev/docs/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://flutter.dev/docs/cookbook)
+google_fonts - https://pub.dev/packages/google_fonts
+Google fonts for text.
 
-For help getting started with Flutter, view our
-[online documentation](https://flutter.dev/docs), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+flutter_slidable - https://pub.dev/packages/flutter_slidable
+Slidable widget to wrap around ListTile for sharing button.
+
+pull_to_refresh - https://pub.dev/packages/pull_to_refresh
+Pull-to-refresh functionality to generate random contacts.
+
+fluttertoast - https://pub.dev/packages/fluttertoast
+Notification message to indicate successful refresh.
+
+## Features
+1. Contact list sorted from most recent to oldest. Formatted by time ago.
+<img src="https://user-images.githubusercontent.com/64016318/134043489-4ff2a1b8-300a-4596-82d6-6341ffcb0566.jpeg" width=20% height=20%>
+
+
+2. Load remaining contacts when user scrolls down.
+<img src="https://user-images.githubusercontent.com/64016318/134043493-ae3a2fbe-cbff-400f-ae8f-7deb66d84eb7.jpeg" width=20% height=20%>
+
+
+3. Pull-to-refresh to add 5 random contacts into the current list.
+<img src="https://user-images.githubusercontent.com/64016318/134043504-a414cccd-fe66-4c45-a07e-abc52185569b.jpeg" width=20% height=20%>
+
+
+4. User is informed when they have scrolled down to the end of the list.
+<img src="https://user-images.githubusercontent.com/64016318/134043508-a1449d28-25ed-48ee-bde9-80c37a371d70.jpeg" width=20% height=20%>
+
+
+5. Toggle button to switch between time formats.
+<img src="https://user-images.githubusercontent.com/64016318/134043511-18dc6bb6-c581-4f6d-95e3-c2327384244a.jpeg" width=20% height=20%>
+
+
+6. Share button can be shown by sliding a contact tile to the right.
+<img src="https://user-images.githubusercontent.com/64016318/134043517-85301e76-30be-4f12-9ea6-88d3b6c46f35.jpeg" width=20% height=20%>
+
