@@ -54,18 +54,52 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  late DatabaseHandler dbHandler;
+  DatabaseHandler dbHandler = new DatabaseHandler();
+  ScrollController _scrollController = ScrollController();
+  bool _isLoading = false;
+  bool _hasLoaded = false;
+
+  int limit = 7;
+  List<Contact> contactsList = [];
 
   @override
   void initState() {
     super.initState();
-    this.dbHandler = DatabaseHandler();
-    this.dbHandler.initializeDB().whenComplete(() async {
-      print(await this.dbHandler.contacts());
+    _fetchInitialData();
+    _scrollController.addListener(() {
+      if (_scrollController.position.pixels >=
+          _scrollController.position.maxScrollExtent) {
+        if (_hasLoaded == false) {
+          setState(() => _isLoading = true);
+          _fetchMoreData();
+        } else {
+          print('End of list');
+        }
+      }
     });
   }
 
-  String convertToAgo(String input) {
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  Future _fetchInitialData() async {
+    var result = await dbHandler.loadFirstNContacts(limit);
+    setState(() => contactsList = result);
+  }
+
+  Future _fetchMoreData() async {
+    var result = await dbHandler.loadRemainingContacts(limit);
+    setState(() {
+      _isLoading = false;
+      _hasLoaded = true;
+      contactsList.addAll(result);
+    });
+  }
+
+  String convertTimeAgo(String input) {
     Duration diff = DateTime.now().difference(DateTime.parse(input));
 
     if (diff.inDays >= 1) {
@@ -82,53 +116,64 @@ class _MyHomePageState extends State<MyHomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Color(0xFFD0D5D6),
-      appBar: AppBar(
-        title: Text(widget.title,
-            style: GoogleFonts.sen(fontWeight: FontWeight.w700, fontSize: 25)),
-        backgroundColor: Color(0xFF282E34),
-      ),
-      body: Center(
-          child: Container(
-              width: MediaQuery.of(context).size.width * 0.85,
-              height: MediaQuery.of(context).size.height * 0.60,
-              margin: EdgeInsets.fromLTRB(30, 20, 30, 20),
-              decoration: BoxDecoration(
-                  border: Border.all(color: Color(0xFF77848B), width: 3),
-                  borderRadius: BorderRadius.circular(15)),
-              child: FutureBuilder(
-                  future: this.dbHandler.contacts(),
-                  builder:
-                      (context, AsyncSnapshot<List<Contact>> contactsData) {
-                    if (contactsData.hasData) {
-                      return ListView.builder(
-                          itemCount: contactsData.data?.length,
-                          itemBuilder: (context, int index) {
-                            return ListTile.divideTiles(
-                              title: Wrap(spacing: 5, children: <Widget>[
-                                Icon(Icons.person, size: 15),
-                                Text(
-                                  contactsData.data![index].user,
-                                  style: GoogleFonts.ruluko(fontSize: 18),
-                                )
-                              ]),
-                              subtitle: Wrap(spacing: 5, children: <Widget>[
-                                Icon(Icons.phone, size: 15),
-                                Text(
-                                  contactsData.data![index].phone,
-                                  style: GoogleFonts.ruluko(fontSize: 17),
-                                ),
-                              ]),
-                              trailing: Text(
-                                convertToAgo(contactsData.data![index].checkin),
-                                style: GoogleFonts.ruluko(fontSize: 15),
+        backgroundColor: Color(0xFFD0D5D6),
+        appBar: AppBar(
+          title: Text(widget.title,
+              style:
+                  GoogleFonts.sen(fontWeight: FontWeight.w700, fontSize: 25)),
+          backgroundColor: Color(0xFF282E34),
+        ),
+        body: Center(
+            child: Container(
+                width: MediaQuery.of(context).size.width * 0.85,
+                height: MediaQuery.of(context).size.height * 0.60,
+                margin: EdgeInsets.fromLTRB(30, 20, 30, 20),
+                decoration: BoxDecoration(
+                    color: Color(0xFFFBFDFF),
+                    border: Border.all(color: Color(0xFF77848B), width: 3),
+                    borderRadius: BorderRadius.circular(15)),
+                child: contactsList.isEmpty
+                    ? Center(child: Text('Loading...'))
+                    : ListView.builder(
+                        controller: _scrollController,
+                        itemCount: _isLoading
+                            ? contactsList.length + 1
+                            : contactsList.length + 1,
+                        itemBuilder: (context, int index) {
+                          if (contactsList.length == index &&
+                              _isLoading == true) {
+                            return Center(child: CircularProgressIndicator());
+                          } else if (contactsList.length == index &&
+                              _hasLoaded == false) {
+                            return Container(
+                                alignment: Alignment.center,
+                                child: Text('Load more'));
+                          } else if (contactsList.length == index &&
+                              _hasLoaded == true) {
+                            return Container(
+                                alignment: Alignment.center,
+                                child: Text('End of list'));
+                          }
+                          return ListTile(
+                            title: Wrap(spacing: 5, children: <Widget>[
+                              Icon(Icons.person, size: 15),
+                              Text(
+                                contactsList[index].user,
+                                style: GoogleFonts.ruluko(fontSize: 18),
+                              )
+                            ]),
+                            subtitle: Wrap(spacing: 5, children: <Widget>[
+                              Icon(Icons.phone, size: 15),
+                              Text(
+                                contactsList[index].phone,
+                                style: GoogleFonts.ruluko(fontSize: 17),
                               ),
-                            );
-                          });
-                    } else {
-                      return Text('Loading...');
-                    }
-                  }))),
-    );
+                            ]),
+                            trailing: Text(
+                              convertTimeAgo(contactsList[index].checkin),
+                              style: GoogleFonts.ruluko(fontSize: 15),
+                            ),
+                          );
+                        }))));
   }
 }

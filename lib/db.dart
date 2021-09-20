@@ -138,11 +138,26 @@ class DatabaseHandler {
     );
   }
 
-  Future<List<Contact>> contacts() async {
+  Future<List<Contact>> loadFirstNContacts(int n) async {
     final db = await initializeDB();
 
     final List<Map<String, dynamic>> maps =
-        await db.query('contacts', orderBy: 'checkin DESC');
+        await db.query('contacts', orderBy: 'checkin DESC', limit: n);
+    return List.generate(maps.length, (i) {
+      return Contact(
+        id: maps[i]['id'],
+        user: maps[i]['user'],
+        phone: maps[i]['phone'],
+        checkin: maps[i]['checkin'],
+      );
+    });
+  }
+
+  Future<List<Contact>> loadRemainingContacts(int n) async {
+    final db = await initializeDB();
+
+    final List<Map<String, dynamic>> maps = await db.query('contacts',
+        orderBy: 'checkin DESC', limit: -1, offset: n);
     return List.generate(maps.length, (i) {
       return Contact(
         id: maps[i]['id'],
