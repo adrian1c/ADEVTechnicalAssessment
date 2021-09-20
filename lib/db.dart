@@ -110,28 +110,22 @@ convertJsonReadable(var input) {
         checkin: jsonFormat['checkin']);
     result.add(newContact);
   }
-
   return result;
 }
 
 class DatabaseHandler {
   Future<Database> initializeDB() async {
     final db = openDatabase(
-      join(await getDatabasesPath(), 'contact_db.db'),
+      join(await getDatabasesPath(), 'contacts_database.db'),
       onCreate: (db, version) async {
         await db.execute(
           'CREATE TABLE contacts(id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, user TEXT, phone TEXT, checkin TEXT)',
         );
         await db.execute(
-            'CREATE TABLE setting(id INTEGER PRIMARY KEY DEFAULT 1 NOT NULL, timeAgo INTEGER DEFAULT 0 NOT NULL )');
+          'CREATE TABLE settings(timeAgo INTEGER)',
+        );
       },
-      onUpgrade: (db, oldVersion, newVersion) async {
-        if (oldVersion == 4) {
-          await db.execute(
-              'CREATE TABLE setting(id INTEGER PRIMARY KEY DEFAULT 1 NOT NULL, timeAgo INTEGER DEFAULT 0 NOT NULL )');
-        }
-      },
-      version: 5,
+      version: 1,
     );
     return db;
   }
@@ -146,10 +140,24 @@ class DatabaseHandler {
     );
   }
 
+  Future<void> insertSetting(int i) async {
+    final db = await initializeDB();
+
+    await db.insert('settings', {'timeAgo': 0},
+        conflictAlgorithm: ConflictAlgorithm.replace);
+  }
+
   Future<List<Contact>> loadFirstNContacts(int n) async {
     final db = await initializeDB();
-    final List<Map<String, dynamic>> maps =
+    List<Map<String, dynamic>> maps =
         await db.query('contacts', orderBy: 'checkin DESC', limit: n);
+    if (maps.length == 0) {
+      for (var i in convertJsonReadable(input)) {
+        await insertContact(i);
+      }
+      await insertSetting(0);
+      maps = await db.query('contacts', orderBy: 'checkin DESC', limit: n);
+    }
     return List.generate(maps.length, (i) {
       return Contact(
         id: maps[i]['id'],
@@ -190,21 +198,20 @@ class DatabaseHandler {
     await db.delete('contacts');
   }
 
-  // Future updateTimeAgo() async {
-  //   final db = await initializeDB();
+  Future updateTimeAgo(int value) async {
+    final db = await initializeDB();
 
-  //   int updateCount = await db.update(
-  //     'setting',
-  //     {'timeAgo': 1},
-  //   );
-  //   print(updateCount);
-  // }
+    await db.update(
+      'settings',
+      {'timeAgo': value},
+    );
+  }
 
-  // Future getTimeAgo() async {
-  //   final db = await initializeDB();
-  //   final List<Map<String, dynamic>> maps = await db.query('setting');
-  //   return List.generate(maps.length, (i) {
-  //     return maps[i]['timeAgo'];
-  //   });
-  // }
+  Future getTimeAgo() async {
+    final db = await initializeDB();
+    final List<Map<String, dynamic>> maps = await db.query('settings');
+    return List.generate(maps.length, (i) {
+      return maps[i]['timeAgo'];
+    });
+  }
 }

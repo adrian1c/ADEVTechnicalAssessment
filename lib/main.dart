@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'dart:async';
-import 'package:intl/intl.dart';
-
-import 'package:sqflite/sqflite.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:flutter_slidable/flutter_slidable.dart';
 
 import 'model/contacts.dart';
 import 'db.dart';
@@ -91,9 +90,15 @@ class _MyHomePageState extends State<MyHomePage> {
   Future _fetchInitialData() async {
     var result = await dbHandler.loadFirstNContacts(limit);
     var count = await dbHandler.getCount();
+    var switched = await dbHandler.getTimeAgo();
     setState(() {
       contactsList = result;
       contactsCount = count;
+      if (switched[0] == 0) {
+        _isSwitched = false;
+      } else {
+        _isSwitched = true;
+      }
     });
   }
 
@@ -118,6 +123,10 @@ class _MyHomePageState extends State<MyHomePage> {
     } else {
       return 'Just now';
     }
+  }
+
+  void shareContact(String user, String phone) {
+    Share.share('Name: $user\nPhone: $phone');
   }
 
   @override
@@ -149,8 +158,12 @@ class _MyHomePageState extends State<MyHomePage> {
                         value: _isSwitched,
                         onChanged: (value) {
                           setState(() {
+                            if (value == false) {
+                              dbHandler.updateTimeAgo(0);
+                            } else {
+                              dbHandler.updateTimeAgo(1);
+                            }
                             _isSwitched = value;
-                            print(_isSwitched);
                           });
                         })
                   ],
@@ -161,7 +174,7 @@ class _MyHomePageState extends State<MyHomePage> {
                   decoration: BoxDecoration(
                       color: Color(0xFFFBFDFF),
                       border: Border.all(color: Color(0xFF77848B), width: 3),
-                      borderRadius: BorderRadius.circular(15)),
+                      borderRadius: BorderRadius.circular(5)),
                   child: contactsList.isEmpty
                       ? Center(child: Text('Loading...'))
                       : ListView.builder(
@@ -182,38 +195,54 @@ class _MyHomePageState extends State<MyHomePage> {
                                 _hasLoaded == true) {
                               return Container(
                                   decoration: BoxDecoration(
+                                      color: Colors.grey[600],
                                       border: Border(
                                           top: BorderSide(
                                               color: Colors.blueGrey))),
-                                  height: 50,
+                                  height: 40,
                                   alignment: Alignment.center,
                                   child: Text(
                                       '--- You have reached end of the list ---',
-                                      style: GoogleFonts.abel(fontSize: 18)));
+                                      style: GoogleFonts.abel(
+                                          fontSize: 18, color: Colors.white)));
                             }
-                            return ListTile(
-                              title: Wrap(spacing: 5, children: <Widget>[
-                                Icon(Icons.person, size: 15),
-                                Text(
-                                  contactsList[index].user,
-                                  style: GoogleFonts.ruluko(fontSize: 18),
-                                )
-                              ]),
-                              subtitle: Wrap(spacing: 5, children: <Widget>[
-                                Icon(Icons.phone, size: 15),
-                                Text(
-                                  contactsList[index].phone,
-                                  style: GoogleFonts.ruluko(fontSize: 17),
-                                ),
-                              ]),
-                              trailing: _isSwitched
-                                  ? Text(
-                                      convertTimeAgo(
-                                          contactsList[index].checkin),
-                                      style: GoogleFonts.ruluko(fontSize: 15),
-                                    )
-                                  : Text(contactsList[index].checkin,
-                                      style: GoogleFonts.ruluko(fontSize: 15)),
+                            return Slidable(
+                              child: ListTile(
+                                title: Wrap(spacing: 5, children: <Widget>[
+                                  Icon(Icons.person, size: 15),
+                                  Text(
+                                    contactsList[index].user,
+                                    style: GoogleFonts.ruluko(fontSize: 18),
+                                  )
+                                ]),
+                                subtitle: Wrap(spacing: 5, children: <Widget>[
+                                  Icon(Icons.phone, size: 15),
+                                  Text(
+                                    contactsList[index].phone,
+                                    style: GoogleFonts.ruluko(fontSize: 17),
+                                  ),
+                                ]),
+                                trailing: _isSwitched
+                                    ? Text(
+                                        convertTimeAgo(
+                                            contactsList[index].checkin),
+                                        style: GoogleFonts.ruluko(fontSize: 15),
+                                      )
+                                    : Text(contactsList[index].checkin,
+                                        style:
+                                            GoogleFonts.ruluko(fontSize: 15)),
+                              ),
+                              actionPane: SlidableDrawerActionPane(),
+                              actionExtentRatio: 0.25,
+                              actions: [
+                                IconSlideAction(
+                                    caption: 'Share',
+                                    icon: Icons.share,
+                                    color: Color(0xFF77848B),
+                                    onTap: () => shareContact(
+                                        contactsList[index].user,
+                                        contactsList[index].phone))
+                              ],
                             );
                           })),
             ],
