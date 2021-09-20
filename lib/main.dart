@@ -124,7 +124,9 @@ class _MyHomePageState extends State<MyHomePage> {
           backgroundColor: Color(0xFF282E34),
         ),
         body: Center(
-            child: Container(
+            child: Column(
+          children: [
+            Container(
                 width: MediaQuery.of(context).size.width * 0.85,
                 height: MediaQuery.of(context).size.height * 0.60,
                 margin: EdgeInsets.fromLTRB(30, 20, 30, 20),
@@ -151,8 +153,15 @@ class _MyHomePageState extends State<MyHomePage> {
                           } else if (contactsList.length == index &&
                               _hasLoaded == true) {
                             return Container(
+                                decoration: BoxDecoration(
+                                    border: Border(
+                                        top: BorderSide(
+                                            color: Colors.blueGrey))),
+                                height: 50,
                                 alignment: Alignment.center,
-                                child: Text('End of list'));
+                                child: Text(
+                                    '--- You have reached end of the list ---',
+                                    style: GoogleFonts.abel(fontSize: 18)));
                           }
                           return ListTile(
                             title: Wrap(spacing: 5, children: <Widget>[
@@ -174,6 +183,8 @@ class _MyHomePageState extends State<MyHomePage> {
                               style: GoogleFonts.ruluko(fontSize: 15),
                             ),
                           );
-                        }))));
+                        })),
+          ],
+        )));
   }
 }
