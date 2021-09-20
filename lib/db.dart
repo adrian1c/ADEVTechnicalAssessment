@@ -118,12 +118,20 @@ class DatabaseHandler {
   Future<Database> initializeDB() async {
     final db = openDatabase(
       join(await getDatabasesPath(), 'contact_db.db'),
-      onCreate: (db, version) {
-        return db.execute(
+      onCreate: (db, version) async {
+        await db.execute(
           'CREATE TABLE contacts(id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, user TEXT, phone TEXT, checkin TEXT)',
         );
+        await db.execute(
+            'CREATE TABLE setting(id INTEGER PRIMARY KEY DEFAULT 1 NOT NULL, timeAgo INTEGER DEFAULT 0 NOT NULL )');
       },
-      version: 1,
+      onUpgrade: (db, oldVersion, newVersion) async {
+        if (oldVersion == 4) {
+          await db.execute(
+              'CREATE TABLE setting(id INTEGER PRIMARY KEY DEFAULT 1 NOT NULL, timeAgo INTEGER DEFAULT 0 NOT NULL )');
+        }
+      },
+      version: 5,
     );
     return db;
   }
@@ -140,7 +148,6 @@ class DatabaseHandler {
 
   Future<List<Contact>> loadFirstNContacts(int n) async {
     final db = await initializeDB();
-
     final List<Map<String, dynamic>> maps =
         await db.query('contacts', orderBy: 'checkin DESC', limit: n);
     return List.generate(maps.length, (i) {
@@ -168,9 +175,36 @@ class DatabaseHandler {
     });
   }
 
+  Future<int> getCount() async {
+    final db = await initializeDB();
+
+    int count = Sqflite.firstIntValue(
+        await db.rawQuery('SELECT COUNT (*) FROM contacts'))!;
+
+    return count;
+  }
+
   Future<void> deleteContact() async {
     final db = await initializeDB();
 
     await db.delete('contacts');
   }
+
+  // Future updateTimeAgo() async {
+  //   final db = await initializeDB();
+
+  //   int updateCount = await db.update(
+  //     'setting',
+  //     {'timeAgo': 1},
+  //   );
+  //   print(updateCount);
+  // }
+
+  // Future getTimeAgo() async {
+  //   final db = await initializeDB();
+  //   final List<Map<String, dynamic>> maps = await db.query('setting');
+  //   return List.generate(maps.length, (i) {
+  //     return maps[i]['timeAgo'];
+  //   });
+  // }
 }

@@ -17,6 +17,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      debugShowCheckedModeBanner: false,
       title: 'Flutter Demo',
       theme: ThemeData(
         // This is the theme of your application.
@@ -58,6 +59,8 @@ class _MyHomePageState extends State<MyHomePage> {
   ScrollController _scrollController = ScrollController();
   bool _isLoading = false;
   bool _hasLoaded = false;
+  bool _isSwitched = false;
+  int contactsCount = 0;
 
   int limit = 7;
   List<Contact> contactsList = [];
@@ -87,7 +90,11 @@ class _MyHomePageState extends State<MyHomePage> {
 
   Future _fetchInitialData() async {
     var result = await dbHandler.loadFirstNContacts(limit);
-    setState(() => contactsList = result);
+    var count = await dbHandler.getCount();
+    setState(() {
+      contactsList = result;
+      contactsCount = count;
+    });
   }
 
   Future _fetchMoreData() async {
@@ -124,67 +131,93 @@ class _MyHomePageState extends State<MyHomePage> {
           backgroundColor: Color(0xFF282E34),
         ),
         body: Center(
-            child: Column(
-          children: [
-            Container(
-                width: MediaQuery.of(context).size.width * 0.85,
-                height: MediaQuery.of(context).size.height * 0.60,
-                margin: EdgeInsets.fromLTRB(30, 20, 30, 20),
-                decoration: BoxDecoration(
-                    color: Color(0xFFFBFDFF),
-                    border: Border.all(color: Color(0xFF77848B), width: 3),
-                    borderRadius: BorderRadius.circular(15)),
-                child: contactsList.isEmpty
-                    ? Center(child: Text('Loading...'))
-                    : ListView.builder(
-                        controller: _scrollController,
-                        itemCount: _isLoading
-                            ? contactsList.length + 1
-                            : contactsList.length + 1,
-                        itemBuilder: (context, int index) {
-                          if (contactsList.length == index &&
-                              _isLoading == true) {
-                            return Center(child: CircularProgressIndicator());
-                          } else if (contactsList.length == index &&
-                              _hasLoaded == false) {
-                            return Container(
-                                alignment: Alignment.center,
-                                child: Text('Load more'));
-                          } else if (contactsList.length == index &&
-                              _hasLoaded == true) {
-                            return Container(
-                                decoration: BoxDecoration(
-                                    border: Border(
-                                        top: BorderSide(
-                                            color: Colors.blueGrey))),
-                                height: 50,
-                                alignment: Alignment.center,
-                                child: Text(
-                                    '--- You have reached end of the list ---',
-                                    style: GoogleFonts.abel(fontSize: 18)));
-                          }
-                          return ListTile(
-                            title: Wrap(spacing: 5, children: <Widget>[
-                              Icon(Icons.person, size: 15),
-                              Text(
-                                contactsList[index].user,
-                                style: GoogleFonts.ruluko(fontSize: 18),
-                              )
-                            ]),
-                            subtitle: Wrap(spacing: 5, children: <Widget>[
-                              Icon(Icons.phone, size: 15),
-                              Text(
-                                contactsList[index].phone,
-                                style: GoogleFonts.ruluko(fontSize: 17),
-                              ),
-                            ]),
-                            trailing: Text(
-                              convertTimeAgo(contactsList[index].checkin),
-                              style: GoogleFonts.ruluko(fontSize: 15),
-                            ),
-                          );
-                        })),
-          ],
+            child: Container(
+          margin: EdgeInsets.fromLTRB(30, 20, 30, 20),
+          width: MediaQuery.of(context).size.width * 0.85,
+          height: MediaQuery.of(context).size.height * 0.7,
+          child: Column(
+            children: <Widget>[
+              Padding(
+                padding: const EdgeInsets.all(15.0),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: <Widget>[
+                    Text('Contacts: $contactsCount',
+                        style: GoogleFonts.ruluko(
+                            fontSize: 25, fontWeight: FontWeight.w500)),
+                    Switch(
+                        value: _isSwitched,
+                        onChanged: (value) {
+                          setState(() {
+                            _isSwitched = value;
+                            print(_isSwitched);
+                          });
+                        })
+                  ],
+                ),
+              ),
+              Container(
+                  height: MediaQuery.of(context).size.height * 0.60,
+                  decoration: BoxDecoration(
+                      color: Color(0xFFFBFDFF),
+                      border: Border.all(color: Color(0xFF77848B), width: 3),
+                      borderRadius: BorderRadius.circular(15)),
+                  child: contactsList.isEmpty
+                      ? Center(child: Text('Loading...'))
+                      : ListView.builder(
+                          controller: _scrollController,
+                          itemCount: _isLoading
+                              ? contactsList.length + 1
+                              : contactsList.length + 1,
+                          itemBuilder: (context, int index) {
+                            if (contactsList.length == index &&
+                                _isLoading == true) {
+                              return Center(child: CircularProgressIndicator());
+                            } else if (contactsList.length == index &&
+                                _hasLoaded == false) {
+                              return Container(
+                                  alignment: Alignment.center,
+                                  child: Text('Load more'));
+                            } else if (contactsList.length == index &&
+                                _hasLoaded == true) {
+                              return Container(
+                                  decoration: BoxDecoration(
+                                      border: Border(
+                                          top: BorderSide(
+                                              color: Colors.blueGrey))),
+                                  height: 50,
+                                  alignment: Alignment.center,
+                                  child: Text(
+                                      '--- You have reached end of the list ---',
+                                      style: GoogleFonts.abel(fontSize: 18)));
+                            }
+                            return ListTile(
+                              title: Wrap(spacing: 5, children: <Widget>[
+                                Icon(Icons.person, size: 15),
+                                Text(
+                                  contactsList[index].user,
+                                  style: GoogleFonts.ruluko(fontSize: 18),
+                                )
+                              ]),
+                              subtitle: Wrap(spacing: 5, children: <Widget>[
+                                Icon(Icons.phone, size: 15),
+                                Text(
+                                  contactsList[index].phone,
+                                  style: GoogleFonts.ruluko(fontSize: 17),
+                                ),
+                              ]),
+                              trailing: _isSwitched
+                                  ? Text(
+                                      convertTimeAgo(
+                                          contactsList[index].checkin),
+                                      style: GoogleFonts.ruluko(fontSize: 15),
+                                    )
+                                  : Text(contactsList[index].checkin,
+                                      style: GoogleFonts.ruluko(fontSize: 15)),
+                            );
+                          })),
+            ],
+          ),
         )));
   }
 }
