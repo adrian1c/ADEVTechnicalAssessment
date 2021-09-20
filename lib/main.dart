@@ -1,8 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'dart:async';
 import 'package:share_plus/share_plus.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
+import 'package:pull_to_refresh/pull_to_refresh.dart';
+import 'package:fluttertoast/fluttertoast.dart';
 
 import 'model/contacts.dart';
 import 'db.dart';
@@ -56,10 +59,13 @@ class MyHomePage extends StatefulWidget {
 class _MyHomePageState extends State<MyHomePage> {
   DatabaseHandler dbHandler = new DatabaseHandler();
   ScrollController _scrollController = ScrollController();
+  RefreshController _refreshController =
+      RefreshController(initialRefresh: false);
   bool _isLoading = false;
   bool _hasLoaded = false;
   bool _isSwitched = false;
-  int contactsCount = 0;
+  bool _isCounted = false;
+  int count = 0;
 
   int limit = 7;
   List<Contact> contactsList = [];
@@ -67,6 +73,7 @@ class _MyHomePageState extends State<MyHomePage> {
   @override
   void initState() {
     super.initState();
+    dbHandler.deleteContact();
     _fetchInitialData();
     _scrollController.addListener(() {
       if (_scrollController.position.pixels >=
@@ -74,8 +81,6 @@ class _MyHomePageState extends State<MyHomePage> {
         if (_hasLoaded == false) {
           setState(() => _isLoading = true);
           _fetchMoreData();
-        } else {
-          print('End of list');
         }
       }
     });
@@ -84,16 +89,18 @@ class _MyHomePageState extends State<MyHomePage> {
   @override
   void dispose() {
     _scrollController.dispose();
+    _refreshController.dispose();
+    Fluttertoast.cancel();
     super.dispose();
   }
 
   Future _fetchInitialData() async {
     var result = await dbHandler.loadFirstNContacts(limit);
-    var count = await dbHandler.getCount();
     var switched = await dbHandler.getTimeAgo();
+    var countNumber = await dbHandler.getCount();
     setState(() {
+      count = countNumber;
       contactsList = result;
-      contactsCount = count;
       if (switched[0] == 0) {
         _isSwitched = false;
       } else {
@@ -107,6 +114,7 @@ class _MyHomePageState extends State<MyHomePage> {
     setState(() {
       _isLoading = false;
       _hasLoaded = true;
+      _isCounted = true;
       contactsList.addAll(result);
     });
   }
@@ -151,7 +159,8 @@ class _MyHomePageState extends State<MyHomePage> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: <Widget>[
-                    Text('Contacts: $contactsCount',
+                    Text(
+                        'Contacts: ${_isCounted ? contactsList.length : count}',
                         style: GoogleFonts.ruluko(
                             fontSize: 25, fontWeight: FontWeight.w500)),
                     Switch(
@@ -177,74 +186,99 @@ class _MyHomePageState extends State<MyHomePage> {
                       borderRadius: BorderRadius.circular(5)),
                   child: contactsList.isEmpty
                       ? Center(child: Text('Loading...'))
-                      : ListView.builder(
-                          controller: _scrollController,
-                          itemCount: _isLoading
-                              ? contactsList.length + 1
-                              : contactsList.length + 1,
-                          itemBuilder: (context, int index) {
-                            if (contactsList.length == index &&
-                                _isLoading == true) {
-                              return Center(child: CircularProgressIndicator());
-                            } else if (contactsList.length == index &&
-                                _hasLoaded == false) {
-                              return Container(
-                                  alignment: Alignment.center,
-                                  child: Text('Load more'));
-                            } else if (contactsList.length == index &&
-                                _hasLoaded == true) {
-                              return Container(
-                                  decoration: BoxDecoration(
-                                      color: Colors.grey[600],
-                                      border: Border(
-                                          top: BorderSide(
-                                              color: Colors.blueGrey))),
-                                  height: 40,
-                                  alignment: Alignment.center,
-                                  child: Text(
-                                      '--- You have reached end of the list ---',
-                                      style: GoogleFonts.abel(
-                                          fontSize: 18, color: Colors.white)));
+                      : SmartRefresher(
+                          controller: _refreshController,
+                          enablePullUp: false,
+                          onRefresh: () async {
+                            var contacts =
+                                await dbHandler.insertRandomContacts(5);
+                            for (int i = 0; i < contacts.length; i++) {
+                              contactsList.add(contacts[i]);
                             }
-                            return Slidable(
-                              child: ListTile(
-                                title: Wrap(spacing: 5, children: <Widget>[
-                                  Icon(Icons.person, size: 15),
-                                  Text(
-                                    contactsList[index].user,
-                                    style: GoogleFonts.ruluko(fontSize: 18),
-                                  )
-                                ]),
-                                subtitle: Wrap(spacing: 5, children: <Widget>[
-                                  Icon(Icons.phone, size: 15),
-                                  Text(
-                                    contactsList[index].phone,
-                                    style: GoogleFonts.ruluko(fontSize: 17),
-                                  ),
-                                ]),
-                                trailing: _isSwitched
-                                    ? Text(
-                                        convertTimeAgo(
-                                            contactsList[index].checkin),
-                                        style: GoogleFonts.ruluko(fontSize: 15),
-                                      )
-                                    : Text(contactsList[index].checkin,
-                                        style:
-                                            GoogleFonts.ruluko(fontSize: 15)),
-                              ),
-                              actionPane: SlidableDrawerActionPane(),
-                              actionExtentRatio: 0.25,
-                              actions: [
-                                IconSlideAction(
-                                    caption: 'Share',
-                                    icon: Icons.share,
-                                    color: Color(0xFF77848B),
-                                    onTap: () => shareContact(
+                            Fluttertoast.showToast(
+                                msg: "Added 5 contacts",
+                                toastLength: Toast.LENGTH_SHORT,
+                                gravity: ToastGravity.CENTER,
+                                timeInSecForIosWeb: 1,
+                                backgroundColor: Colors.grey,
+                                textColor: Colors.white,
+                                fontSize: 16.0);
+                            setState(() => contactsList);
+                            _refreshController.refreshCompleted();
+                          },
+                          child: ListView.builder(
+                              controller: _scrollController,
+                              itemCount: _isLoading
+                                  ? contactsList.length + 1
+                                  : contactsList.length + 1,
+                              itemBuilder: (context, int index) {
+                                if (contactsList.length == index &&
+                                    _isLoading == true) {
+                                  return Center(
+                                      child: CircularProgressIndicator());
+                                } else if (contactsList.length == index &&
+                                    _hasLoaded == false) {
+                                  return Container(
+                                      alignment: Alignment.center,
+                                      child: Text('Load more'));
+                                } else if (contactsList.length == index &&
+                                    _hasLoaded == true) {
+                                  return Container(
+                                      decoration: BoxDecoration(
+                                          color: Colors.grey[600],
+                                          border: Border(
+                                              top: BorderSide(
+                                                  color: Colors.blueGrey))),
+                                      height: 40,
+                                      alignment: Alignment.center,
+                                      child: Text(
+                                          '--- You have reached end of the list ---',
+                                          style: GoogleFonts.abel(
+                                              fontSize: 18,
+                                              color: Colors.white)));
+                                }
+                                return Slidable(
+                                  child: ListTile(
+                                    title: Wrap(spacing: 5, children: <Widget>[
+                                      Icon(Icons.person, size: 15),
+                                      Text(
                                         contactsList[index].user,
-                                        contactsList[index].phone))
-                              ],
-                            );
-                          })),
+                                        style: GoogleFonts.ruluko(fontSize: 18),
+                                      )
+                                    ]),
+                                    subtitle:
+                                        Wrap(spacing: 5, children: <Widget>[
+                                      Icon(Icons.phone, size: 15),
+                                      Text(
+                                        contactsList[index].phone,
+                                        style: GoogleFonts.ruluko(fontSize: 17),
+                                      ),
+                                    ]),
+                                    trailing: _isSwitched
+                                        ? Text(
+                                            convertTimeAgo(
+                                                contactsList[index].checkin),
+                                            style: GoogleFonts.ruluko(
+                                                fontSize: 15),
+                                          )
+                                        : Text(contactsList[index].checkin,
+                                            style: GoogleFonts.ruluko(
+                                                fontSize: 15)),
+                                  ),
+                                  actionPane: SlidableDrawerActionPane(),
+                                  actionExtentRatio: 0.25,
+                                  actions: [
+                                    IconSlideAction(
+                                        caption: 'Share',
+                                        icon: Icons.share,
+                                        color: Color(0xFF77848B),
+                                        onTap: () => shareContact(
+                                            contactsList[index].user,
+                                            contactsList[index].phone))
+                                  ],
+                                );
+                              }),
+                        )),
             ],
           ),
         )));

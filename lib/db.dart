@@ -1,8 +1,11 @@
 import 'dart:async';
-import 'model/contacts.dart';
 import 'dart:convert';
+import 'dart:math';
+
 import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
+
+import 'model/contacts.dart';
 
 final input = '''
 {
@@ -181,6 +184,17 @@ class DatabaseHandler {
         checkin: maps[i]['checkin'],
       );
     });
+  }
+
+  Future insertRandomContacts(int n) async {
+    var result = convertJsonReadable(input);
+    var contacts = [];
+    for (int i = 0; i < n; i++) {
+      var random = new Random();
+      contacts.add(result[random.nextInt(result.length - 1)]);
+    }
+
+    return contacts;
   }
 
   Future<int> getCount() async {

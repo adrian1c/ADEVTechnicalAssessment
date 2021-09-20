@@ -1,5 +1,3 @@
-import 'package:intl/intl.dart';
-
 class Contact {
   var id;
   final String user;
