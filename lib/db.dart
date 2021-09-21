@@ -7,6 +7,7 @@ import 'package:sqflite/sqflite.dart';
 
 import 'model/contacts.dart';
 
+// Input from contacts example dataset
 final input = '''
 {
 "user": "Chan Saw Lin"
@@ -116,7 +117,9 @@ convertJsonReadable(var input) {
   return result;
 }
 
+// DatabaseHandler Class for API calls
 class DatabaseHandler {
+  // Initializing Database
   Future<Database> initializeDB() async {
     final db = openDatabase(
       join(await getDatabasesPath(), 'contacts_database.db'),
@@ -133,6 +136,7 @@ class DatabaseHandler {
     return db;
   }
 
+  // Insert new Contact into database
   Future<void> insertContact(Contact contact) async {
     final db = await initializeDB();
 
@@ -143,6 +147,7 @@ class DatabaseHandler {
     );
   }
 
+  // Insert default setting of timeAgo format
   Future<void> insertSetting(int i) async {
     final db = await initializeDB();
 
@@ -150,6 +155,7 @@ class DatabaseHandler {
         conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
+  // Load n number of contacts to display initially
   Future<List<Contact>> loadFirstNContacts(int n) async {
     final db = await initializeDB();
     List<Map<String, dynamic>> maps =
@@ -171,6 +177,7 @@ class DatabaseHandler {
     });
   }
 
+  // Load the rest of the contacts if user scrolls down
   Future<List<Contact>> loadRemainingContacts(int n) async {
     final db = await initializeDB();
 
@@ -186,6 +193,7 @@ class DatabaseHandler {
     });
   }
 
+  // Pull-to-refresh generate random contacts
   Future insertRandomContacts(int n) async {
     var result = convertJsonReadable(input);
     var contacts = [];
@@ -197,6 +205,7 @@ class DatabaseHandler {
     return contacts;
   }
 
+  // Get the total number of contacts in the database
   Future<int> getCount() async {
     final db = await initializeDB();
 
@@ -206,12 +215,14 @@ class DatabaseHandler {
     return count;
   }
 
+  // Delete all contacts (not used)
   Future<void> deleteContact() async {
     final db = await initializeDB();
 
     await db.delete('contacts');
   }
 
+  // Update user settings of timeAgo formatting
   Future updateTimeAgo(int value) async {
     final db = await initializeDB();
 
@@ -221,6 +232,7 @@ class DatabaseHandler {
     );
   }
 
+  // Retrieve user settings of timeAgo formatting
   Future getTimeAgo() async {
     final db = await initializeDB();
     final List<Map<String, dynamic>> maps = await db.query('settings');
